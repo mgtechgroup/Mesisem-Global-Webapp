@@ -1,0 +1,9 @@
+# Redirects for Cloudflare Pages
+# Ensure trailing slashes for static export compatibility
+
+# Handle www to non-www
+https://www.mesisemglobal.com/* https://mesisemglobal.com/:splat 301!
+
+# Handle HTTP to HTTPS
+http://mesisemglobal.com/* https://mesisemglobal.com/:splat 301!
+http://www.mesisemglobal.com/* https://mesisemglobal.com/:splat 301!
