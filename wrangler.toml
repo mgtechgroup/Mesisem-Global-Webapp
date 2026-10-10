@@ -2,3 +2,11 @@ name = "mesisem-global-webapp"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "dist"
+
+# Non-secret vars live here: when wrangler.toml exists Cloudflare Pages treats it as the
+# source of truth and ignores dashboard plain-text vars. Secrets (DATABASE_URL,
+# SUPABASE_SERVICE_ROLE_KEY) stay in the Pages dashboard — never in this file.
+[vars]
+NEXT_PUBLIC_SUPABASE_URL = "https://qjbqecssqgeztfxinizm.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_a67RHYYREk9E9THWklUSFQ_3MztpO9z"
+SUPABASE_URL = "https://qjbqecssqgeztfxinizm.supabase.co"

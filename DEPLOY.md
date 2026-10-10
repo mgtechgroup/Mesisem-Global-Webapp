@@ -1,93 +1,39 @@
-# Deployment Guide — Mesisem Global LLC Website
+# Deployment — Mesisem Global Webapp
 
-**Domain:** https://mesisemglobal.com  
-**GitHub:** https://github.com/mgtechgroup/mesisem-global-llc-design  
-**Build Output:** `dist/` (static export)
+**Hosting:** Cloudflare Pages only (Vercel is not used; no `vercel.json`, no Vercel project linkage).
+**Repo:** https://github.com/mgtechgroup/Mesisem-Global-Webapp · branch `main`
+**Pages project:** `mesisem-global-webapp` → https://mesisem-global-webapp.pages.dev
+**Build:** `npm ci && npm run build` → `dist/` (Next.js static export) + `functions/` (Pages Functions)
 
----
+## How deploys happen
+Cloudflare Pages is Git-connected: every push to `main` builds and deploys. No GitHub Action is
+required for deployment (the workflow in `.github/workflows/deploy.yml` is a CI typecheck/build and
+an optional secondary deploy path; it only deploys if `CLOUDFLARE_API_TOKEN`/`ACCOUNT_ID` secrets exist).
 
-## Option A: Cloudflare Pages Native Git Integration (Recommended)
+## Configuration sources
+| Setting | Where |
+|---|---|
+| `compatibility_date`, `nodejs_compat`, output dir | `wrangler.toml` |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_URL` | `wrangler.toml` `[vars]` (non-secret) |
+| `DATABASE_URL` (Neon), `SUPABASE_SERVICE_ROLE_KEY` | Pages dashboard → Settings → Variables and Secrets (**secret**) |
+| Security headers / CSP | `public/_headers` |
+| www → apex, http → https | `public/_redirects` |
 
-1. **Log in to Cloudflare Dashboard**
-   - Go to https://dash.cloudflare.com
+> When `wrangler.toml` is present Cloudflare uses it as the source of truth for non-secret vars;
+> dashboard plain-text vars are ignored. Keep secrets out of the file.
 
-2. **Navigate to Pages**
-   - Click "Pages" in the left sidebar
-   - Click "Create a project"
-   - Select "Connect to Git"
+## Custom domain cutover (requires explicit approval)
+`mesisemglobal.com` currently serves the `mesisem-public-resources` Pages project. To move it:
+1. Pages → `mesisem-global-webapp` → Custom domains → add `mesisemglobal.com` and `www.mesisemglobal.com`.
+2. Remove the same two domains from `mesisem-public-resources` (Cloudflare will prompt to reassign).
+3. DNS CNAMEs (apex + www) → `mesisem-global-webapp.pages.dev`, proxied. Leave MX/TXT untouched.
+4. Verify 200 on apex, www, `/resources/`, `/api/contact`, and canonical tags.
 
-3. **Connect GitHub**
-   - Authorize Cloudflare to access GitHub
-   - Select repository: `mgtechgroup/mesisem-global-llc-design`
-   - Click "Begin setup"
-
-4. **Configure Build Settings**
-   | Setting | Value |
-   |---------|-------|
-   | Project name | `mesisem-global-llc-design` |
-   | Production branch | `master` |
-   | Build command | `npm run build` |
-   | Build output directory | `dist` |
-
-5. **Add Environment Variables** (if needed)
-   - None required for static build
-
-6. **Save and Deploy**
-   - Click "Save and Deploy"
-   - First build will start automatically
-
-7. **Add Custom Domain**
-   - Go to project → "Custom domains"
-   - Click "Set up a custom domain"
-   - Enter: `mesisemglobal.com`
-   - Follow DNS verification steps
-   - Enable SSL/TLS (Full or Full (strict))
-
----
-
-## Option B: GitHub Actions + Cloudflare API
-
-1. **Get Cloudflare API Token**
-   - Go to https://dash.cloudflare.com/profile/api-tokens
-   - Create token with "Cloudflare Pages: Edit" permission
-
-2. **Add Secrets to GitHub Repo**
-   - Go to repo → Settings → Secrets and variables → Actions
-   - Add `CLOUDFLARE_API_TOKEN`
-   - Add `CLOUDFLARE_ACCOUNT_ID` (from Cloudflare dashboard right sidebar)
-
-3. **Push to trigger deploy**
-   - The `.github/workflows/deploy.yml` is already configured
-   - Push to `master` will auto-deploy
-
----
-
-## Security Headers
-
-The `public/_headers` file configures:
-- X-Frame-Options: DENY
-- X-Content-Type-Options: nosniff
-- Content-Security-Policy
-- Strict-Transport-Security
-- Referrer-Policy
-
-The `public/_redirects` file configures:
-- www → non-www redirect
-- HTTP → HTTPS redirect
-
----
-
-## Pre-Launch Checklist
-
-- [ ] DNS A record points to Cloudflare Pages
-- [ ] SSL/TLS certificate active
-- [ ] Custom domain shows "Active"
-- [ ] Build succeeds without errors
-- [ ] All pages render correctly
-- [ ] Contact form submits successfully
-- [ ] Mobile responsive test passed
-- [ ] Security headers verified (securityheaders.com)
-
----
-
-*Generated: 2026-04-27*
+## Post-deploy checklist
+- [ ] Deployment stages all `success`, `uses_functions: true`
+- [ ] `/`, `/services/*`, `/pricing/`, `/compliance/`, `/resources/`, `/about/`, `/contact/`, legal pages → 200
+- [ ] `/resources/` shows "17 of 17 records · source: Supabase (live)"
+- [ ] Contact form → "Message Received"; `/api/contact` returns `neon: ok`, `supabase: ok`
+- [ ] Rows present in `contact_submissions` on Neon and Supabase
+- [ ] Security headers present (`X-Frame-Options`, CSP with `connect-src … *.supabase.co`, HSTS)
+- [ ] Record result in `PUBLISH_LOG.md`
